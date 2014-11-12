@@ -2,6 +2,8 @@ Shopping Cart для Yii2
 =============
 Компонент для реализации корзины моделей.
 
+Идея основана на [Shopping Cart для Yii 1.x](https://github.com/yiiext/shopping-cart-component)
+
 Корзина - объект контейнер, для хранения коллекции позиций, и методами для работы с этой коллекцией.
 
 Состояние корзины между запросами хранится в сессии пользователя.
@@ -58,7 +60,7 @@ class Book extends CActiveRecord implements IECartPosition {
         return $this->price;
     }
 
-    public function getAviable()
+    public function getAvailable()
     {
         return true;
     }

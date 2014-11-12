@@ -23,9 +23,9 @@ interface IECartPosition
     public function getPrice();
 
     /**
-     * @return boolean aviable
+     * @return boolean available
      */
-    public function getAviable();
+    public function getAvailable();
 
     /**
      * @return string title
