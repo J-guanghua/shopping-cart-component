@@ -1,0 +1,25 @@
+{
+    "name": "developeruz/shopping-cart-component",
+    "description": "ShoppingCart for Yii2",
+    "keywords": ["yii2", "component", "ShoppingCart"],
+    "type": "yii2-extension",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Elvira Sheina",
+            "email": "elleuz@gmail.com",
+            "homepage": "http://developer.uz"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "*"
+    },
+    "support": {
+        "issues": "https://github.com/developeruz/shopping-cart-component/issues"
+    },
+    "autoload": {
+        "psr-4": {
+            "developeruz\\shopping\\": ""
+        }
+    }
+}
