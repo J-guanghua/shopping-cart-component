@@ -1,227 +1,184 @@
 <?php
+namespace developeruz\shopping;
+
 /**
- * Shopping cart class
+ * IECartPosition
+ * The idea is based on ShoppingCart for Yii1x (https://github.com/yiiext/shopping-cart-component)
  *
- * @author pirrat <mrakobesov@gmail.com>
- * @version 0.9
- * @package ShoppingCart
+ * @author Elle <elleuz@gmail.com>
+ * @version 0.1
+ * @package ShoppingCart for Yii2
+ *
  */
+use Yii;
+use yii\base\Component;
 
-class EShoppingCart extends CMap {
+class EShoppingCart extends Component
+{
+    public $cartId = __CLASS__;
 
-    /**
-     * Update the model on session restore?
-     * @var boolean
-     */
-    public $refresh = true;
+    private $basket = [];
 
-    public $discounts = array();
-	
-	public $cartId = __CLASS__;
-
-    /**
-     * Cart-wide discount sum
-     * @var float
-     */
-    protected $discountPrice = 0.0;
-
-    public function init(){
+    public function init()
+    {
+        parent::init();
+        $this->basket = [];
         $this->restoreFromSession();
     }
 
-    /**
-     * Restores the shopping cart from the session
-     */
-    public function restoreFromSession() {
-        $data = unserialize(Yii::app()->getUser()->getState($this->cartId));
-        if (is_array($data) || $data instanceof Traversable)
-            foreach ($data as $key => $product)
-                parent::add($key, $product);
-
-    }
-
-    /**
-     * Add item to the shopping cart
-     * If the position was previously added to the cart,
-     * then information about it is updated, and count increases by $quantity
-     * @param IECartPosition $position
-     * @param int count of elements positions
-     */
-    public function put(IECartPosition $position, $quantity = 1) {
-        $key = $position->getId();
-        if ($this->itemAt($key) instanceof IECartPosition) {
-            $position = $this->itemAt($key);
-            $oldQuantity = $position->getQuantity();
-            $quantity += $oldQuantity;
-        }
-
-        $this->update($position, $quantity);
-
-    }
-
-
-    /**
-     * Add $value items to position with $key specified
-     * @return void
-     * @param mixed $key
-     * @param mixed $value
-     */
-    public function add($key, $value) {
-        $this->put($value, 1);
-    }
-
-    /**
-     * Removes position from the shopping cart of key
-     * @param mixed $key
-     */
-    public function remove($key) {
-        parent::remove($key);
-        $this->applyDiscounts();
-        $this->onRemovePosition(new CEvent($this));
-        $this->saveState();
-    }
-
-
-    /**
-     * Updates the position in the shopping cart
-     * If position was previously added, then it will be updated in shopping cart,
-     * if position was not previously in the cart, it will be added there.
-     * If count is less than 1, the position will be deleted.
-     *
-     * @param IECartPosition $position
-     * @param int $quantity
-     */
-    public function update(IECartPosition $position, $quantity) {
-        if (!($position instanceof CComponent))
-            throw new InvalidArgumentException('invalid argument 1, product must implement CComponent interface');
-
-        $key = $position->getId();
-		
-		$position->detachBehavior("CartPosition");
-        $position->attachBehavior("CartPosition", new ECartPositionBehaviour());
-        $position->setRefresh($this->refresh);
-
-        $position->setQuantity($quantity);
-
-        if ($position->getQuantity() < 1)
-            $this->remove($key);
-        else
-            parent::add($key, $position);
-
-        $this->applyDiscounts();
-        $this->onUpdatePosition(new CEvent($this));
-        $this->saveState();
-    }
-
-    /**
-     * Saves the state of the object in the session.
-     * @return void
-     */
-    protected function saveState() {
-        Yii::app()->getUser()->setState($this->cartId, serialize($this->toArray()));
-    }
-
-    /**
-     * Returns count of items in shopping cart
-     * @return int
-     */
-    public function getItemsCount() {
-        $count = 0;
-        foreach ($this as $position)
-        {
-            $count += $position->getQuantity();
-        }
-
-        return $count;
-    }
-
-
-    /**
-     * Returns total price for all items in the shopping cart.
-     * @param bool $withDiscount
-     * @return float
-     */
-    public function getCost($withDiscount = true) {
-        $price = 0.0;
-        foreach ($this as $position)
-        {
-            $price += $position->getSumPrice($withDiscount);
-        }
-
-        if($withDiscount)
-            $price -= $this->discountPrice;
-
-        return $price;
-    }
-
-    /**
-     * onRemovePosition event
-     * @param  $event
-     * @return void
-     */
-    public function onRemovePosition($event) {
-        $this->raiseEvent('onRemovePosition', $event);
-    }
-
-    /**
-     * onUpdatePoistion event
-     * @param  $event
-     * @return void
-     */
-    public function onUpdatePosition($event) {
-        $this->raiseEvent('onUpdatePosition', $event);
-    }
-
-    /**
-     * Apply discounts to all positions
-     * @return void
-     */
-    protected function applyDiscounts() {
-        foreach ($this->discounts as $discount)
-        {
-            $discountObj = Yii::createComponent($discount);
-            $discountObj->setShoppingCart($this);
-            $discountObj->apply();
-        }
-    }
-
-    /**
-     * Set cart-wide discount sum
-     *
-     * @param float $price
-     * @return void
-     */
-    public function setDiscountPrice($price){
-        $this->discountPrice = $price;
-    }
-
-    /**
-     * Add $price to cart-wide discount sum
-     *
-     * @param float $price
-     * @return void
-     */
-    public function addDiscountPrice($price){
-        $this->discountPrice += $price;
-    }
-
-    /**
-     * Returns array all positions
-     * @return array
-     */
-    public function getPositions()
+    public function put($model, $quality=1)
     {
-        return $this->toArray();
+        $id = $model->getId();
+        if (array_key_exists($id, $this->basket)) {
+            $this->basket[$id]['quality'] += $quality;
+        } else {
+            $this->basket[$id]['quality'] = $quality;
+            $this->basket[$id]['class'] = $model->className();
+        }
+        $this->saveInSession();
     }
 
-    /**
-     * Returns if cart is empty
-     * @return bool
-     */
+    public function update($model, $quality)
+    {
+        if($quality<0)
+            $this->remove($model);
+        else {
+            $id = $model->getId();
+            if (array_key_exists($id, $this->basket)) {
+                $this->basket[$id]['quality'] = $quality;
+            }
+            else {
+                $this->put($model, $quality);
+            }
+        }
+        $this->saveInSession();
+    }
+
+    public function remove($model)
+    {
+        $id = $model->getId();
+        if (array_key_exists($id, $this->basket)) {
+            unset($this->basket[$id]);
+        }
+
+        $this->saveInSession();
+    }
+
+    public function clear()
+    {
+        $this->basket = [];
+        Yii::$app->session->remove($this->cartId);
+    }
+
     public function isEmpty()
     {
-        return !(bool)$this->getCount();
+        return empty($this->basket);
     }
 
+    public function getCount()
+    {
+        return count($this->basket);
+    }
 
-}
+    public function getItemsCount($model = '')
+    {
+        $result = 0;
+        if (empty($model)) {
+            foreach ($this->basket as $items) {
+                $result += $items['quality'];
+            }
+        } else {
+            $id = $model->getId();
+            $result = $this->basket[$id]['quality'];
+        }
+        return $result;
+    }
+
+    public function getCost($model = '')
+    {
+        $result = 0;
+        if (empty($model)) {
+            foreach ($this->basket as $id => $item) {
+                $itemModel = $this->getModel($item['class'], $id);
+                $result += ($item['quality'] * $itemModel->getPrice());
+            }
+        } else {
+            $id = $model->getId();
+            $result = $this->basket[$id]['quality'] * $model->getPrice();
+        }
+        return $result;
+    }
+
+    public function getDiscountCost($model = '')
+    {
+        $result = 0;
+        if (empty($model)) {
+            foreach ($this->basket as $id => $item) {
+                $itemModel = $this->getModel($item['class'], $id);
+                $result += $itemModel->getCostWithDiscount($item['quality']);
+            }
+        } else {
+            $id = $model->getId();
+            $result = $model->getCostWithDiscount($this->basket[$id]['quality']);
+        }
+        return $result;
+    }
+
+    public function getPositions($model = '')
+    {
+        $result = [];
+        if (empty($model)) {
+            foreach ($this->basket as $id => $item) {
+                $itemModel = $this->getModel($item['class'], $id);
+                $result[] = [
+                    'item' => $itemModel->getTitle(),
+                    'quality' => $item['quality'],
+                    'price' => $itemModel->getPrice(),
+                    'cost' => ($item['quality'] * $itemModel->getPrice()),
+                    'cost_with_discount' => $itemModel->getCostWithDiscount($item['quality'])
+                ];
+            }
+        } else {
+            $id = $model->getId();
+            $result = [
+                'item' => $model->getTitle(),
+                'quality' => $this->basket[$id]['quality'],
+                'price' => $model->getPrice(),
+                'cost' => ($this->basket[$id]['quality'] * $model->getPrice()),
+                'cost_with_discount' => $model->getCostWithDiscount($this->basket[$id]['quality'])
+            ];
+        }
+        return $result;
+    }
+
+    private function restoreFromSession()
+    {
+        if (Yii::$app->session->has($this->cartId)) {
+            $productList = unserialize(Yii::$app->session[$this->cartId]);
+            foreach ($productList as $id => $p) {
+                if (isset($p['class'])) {
+                    $this->add($p['class'], $id, (!empty($p['quality']) ? $p['quality'] : 1));
+                }
+            }
+        }
+    }
+
+    private function add($class, $id, $quality)
+    {
+        $model = $this->getModel($class, $id);
+        if (!empty($model) && $model->getAviable()) {
+            $this->put($model, $quality);
+        }
+    }
+
+    private function saveInSession()
+    {
+        Yii::$app->session[$this->cartId] = serialize($this->basket);
+    }
+
+    private function getModel($class, $id)
+    {
+        return $class::findOne($id);
+    }
+
+} 
