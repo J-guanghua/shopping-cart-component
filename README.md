@@ -60,7 +60,7 @@ class Book extends CActiveRecord implements IECartPosition {
         return $this->price;
     }
 
-    public function getAvailable()
+    public function getAviable()
     {
         return true;
     }
